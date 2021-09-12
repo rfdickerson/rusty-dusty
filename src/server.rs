@@ -5,8 +5,7 @@ use hello_world::{TransactionRequest, TransactionResponse};
 use uuid::Uuid;
 use std::env;
 
-use redis::AsyncCommands;
-use redis::{Commands, RedisResult, IntoConnectionInfo, RedisError};
+use redis::{AsyncCommands, RedisResult};
 
 
 pub mod hello_world {
@@ -19,13 +18,13 @@ pub struct MyGreeter {
 }
 
 
-fn insert_pan(last_pan: String, client: &redis::Client) -> RedisResult<()> {
-    let mut con = client.get_connection().expect("conn");
+// fn insert_pan(last_pan: String, client: &redis::Client) -> RedisResult<()> {
+//     let mut con = client.get_connection().expect("conn");
 
-    con.set("my_key", last_pan)?;
+//     con.set("my_key", last_pan)?;
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 async fn add_pan(last_pan: String, client: &redis::Client) -> RedisResult<()> {
     let mut con = client.get_async_connection().await?;
@@ -62,9 +61,6 @@ impl Greeter for MyGreeter {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-    let args: Vec<String> = env::args().collect();
-
-    //let redis_addr = args[1].clone();
     let redis_addr = env::args()
         .nth(1)
         .unwrap_or_else(|| r#"redis://localhost:6379"#.to_string());
@@ -74,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = redis::Client::open(redis_addr)?;
 
     let greeter = MyGreeter {
-        client: client,
+        client,
     };
 
     println!("Awesome microservice listening on {}", addr);
