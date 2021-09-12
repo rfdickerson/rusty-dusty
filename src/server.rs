@@ -5,7 +5,8 @@ use hello_world::{TransactionRequest, TransactionResponse};
 use uuid::Uuid;
 use std::env;
 
-use redis::{Commands, RedisResult, IntoConnectionInfo};
+use redis::AsyncCommands;
+use redis::{Commands, RedisResult, IntoConnectionInfo, RedisError};
 
 
 pub mod hello_world {
@@ -14,7 +15,6 @@ pub mod hello_world {
 
 
 pub struct MyGreeter {
-
     client: redis::Client,
 }
 
@@ -23,6 +23,14 @@ fn insert_pan(last_pan: String, client: &redis::Client) -> RedisResult<()> {
     let mut con = client.get_connection().expect("conn");
 
     con.set("my_key", last_pan)?;
+
+    Ok(())
+}
+
+async fn add_pan(last_pan: String, client: &redis::Client) -> RedisResult<()> {
+    let mut con = client.get_async_connection().await?;
+
+    con.set("my_key", last_pan).await?;
 
     Ok(())
 }
@@ -43,8 +51,7 @@ impl Greeter for MyGreeter {
             transaction_id: my_uuid.to_string()
         };
 
-
-        let _ = insert_pan(my_uuid.to_string(), &self.client);
+        add_pan(my_uuid.to_string(), &self.client).await.expect("upload pan");
 
         Ok(Response::new(reply))
     }
@@ -64,7 +71,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let addr = "0.0.0.0:50051".parse().unwrap();
 
-    //let client = redis::Client::open("redis://127.0.0.1/")?;
     let client = redis::Client::open(redis_addr)?;
 
     let greeter = MyGreeter {
