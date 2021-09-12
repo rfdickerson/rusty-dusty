@@ -5,7 +5,7 @@ use hello_world::{TransactionRequest, TransactionResponse};
 use uuid::Uuid;
 use std::env;
 
-use redis::{Commands, RedisResult};
+use redis::{Commands, RedisResult, IntoConnectionInfo};
 
 
 pub mod hello_world {
@@ -55,13 +55,17 @@ impl Greeter for MyGreeter {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-    // let args: Vec<String> = env::args().collect();
+    let args: Vec<String> = env::args().collect();
 
-    // let redis_addr = &args[1];
+    //let redis_addr = args[1].clone();
+    let redis_addr = env::args()
+        .nth(1)
+        .unwrap_or_else(|| r#"redis://localhost:6379"#.to_string());
 
     let addr = "0.0.0.0:50051".parse().unwrap();
 
-    let client = redis::Client::open("redis://127.0.0.1/")?;
+    //let client = redis::Client::open("redis://127.0.0.1/")?;
+    let client = redis::Client::open(redis_addr)?;
 
     let greeter = MyGreeter {
         client: client,
