@@ -2,19 +2,10 @@ syntax = "proto3";
 
 package helloworld;
 
-service Greeter {
-    // Sends a greeting
-    // rpc SayHello (HelloRequest) returns (HelloReply);
+service TransactionService {
     rpc MakeTransaction (TransactionRequest) returns (TransactionResponse);
 }
 
-message HelloRequest {
-    string name = 1;
-}
-
-message HelloReply {
-    string message = 1;
-}
 
 message TransactionRequest {
     string PAN = 1;

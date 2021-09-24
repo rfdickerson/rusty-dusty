@@ -1,30 +1,25 @@
 use tonic::{transport::Server, Request, Response, Status};
 
-use hello_world::greeter_server::{Greeter, GreeterServer};
-use hello_world::{TransactionRequest, TransactionResponse};
+use helloworld::transaction_service_server::{TransactionService, TransactionServiceServer};
+use helloworld::{TransactionRequest, TransactionResponse};
 use uuid::Uuid;
 use std::env;
+
+use tracing::info;
+use tracing_subscriber;
 
 use redis::{AsyncCommands, RedisResult};
 
 
-pub mod hello_world {
+pub mod helloworld {
     tonic::include_proto!("helloworld");
 }
 
-
-pub struct MyGreeter {
+#[derive(Debug)]
+pub struct MyTransactionService {
     client: redis::Client,
 }
 
-
-// fn insert_pan(last_pan: String, client: &redis::Client) -> RedisResult<()> {
-//     let mut con = client.get_connection().expect("conn");
-
-//     con.set("my_key", last_pan)?;
-
-//     Ok(())
-// }
 
 async fn add_pan(last_pan: String, client: &redis::Client) -> RedisResult<()> {
     let mut con = client.get_async_connection().await?;
@@ -35,8 +30,9 @@ async fn add_pan(last_pan: String, client: &redis::Client) -> RedisResult<()> {
 }
 
 #[tonic::async_trait]
-impl Greeter for MyGreeter {
+impl TransactionService for MyTransactionService {
 
+    #[tracing::instrument]
     async fn make_transaction(
         &self,
         request: Request<TransactionRequest>,
@@ -46,7 +42,7 @@ impl Greeter for MyGreeter {
 
         let my_uuid = Uuid::new_v4();
 
-        let reply = hello_world::TransactionResponse {
+        let reply = TransactionResponse {
             transaction_id: my_uuid.to_string()
         };
 
@@ -61,23 +57,30 @@ impl Greeter for MyGreeter {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
+    tracing_subscriber::fmt::init();
+
     let redis_addr = env::args()
         .nth(1)
         .unwrap_or_else(|| r#"redis://localhost:6379"#.to_string());
 
-    let addr = "0.0.0.0:50051".parse().unwrap();
+    let addr: String = "0.0.0.0:50051".parse().unwrap();
 
+    info!("Redis server at {}", &redis_addr);
     let client = redis::Client::open(redis_addr)?;
 
-    let greeter = MyGreeter {
+    let greeter = MyTransactionService {
         client,
     };
 
-    println!("Awesome microservice listening on {}", addr);
+    info!("Orchestrator microservice listening on {}", addr);
 
-    let service = GreeterServer::new(greeter).send_gzip().accept_gzip();
+    let addr = "[::1]:50051".parse().unwrap();
+    info!(message = "Starting server.", %addr);
+
+    let service = TransactionServiceServer::new(greeter).send_gzip().accept_gzip();
 
     Server::builder()
+        .trace_fn(|_| tracing::info_span!("helloworld_server"))
         .add_service(service)
         .serve(addr)
         .await?;
