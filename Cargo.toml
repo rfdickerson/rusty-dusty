@@ -18,9 +18,12 @@ redis = { version = "0.20.0", features = ["tokio-comp"] }
 redis_ts = {version = "0.4.0", features = ['tokio-comp'] }
 # Tracing
 tracing = "0.1.16"
-tracing-subscriber = { version = "0.2", features = ["tracing-log"] }
+tracing-subscriber = { version = "0.2", features = ["registry", "tracing-log"] }
 tracing-attributes = "0.1"
 tracing-futures = "0.2"
+tracing-opentelemetry = "0.15"
+opentelemetry = { version = "0.16", default-features = false, features = ["trace"] }
+opentelemetry-jaeger = "0.15"
 
 [build-dependencies]
 tonic-build = {version = "0.5", features = ["compression"] }

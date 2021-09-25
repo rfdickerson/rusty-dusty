@@ -5,8 +5,11 @@ use helloworld::{TransactionRequest, TransactionResponse};
 use uuid::Uuid;
 use std::env;
 
-use tracing::info;
+use tracing::{info, debug, span, warn, Level};
 use tracing_subscriber;
+use tracing_attributes::instrument;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::Registry;
 
 use redis::{AsyncCommands, RedisResult};
 
@@ -20,7 +23,7 @@ pub struct MyTransactionService {
     client: redis::Client,
 }
 
-
+#[tracing::instrument]
 async fn add_pan(last_pan: String, client: &redis::Client) -> RedisResult<()> {
     let mut con = client.get_async_connection().await?;
 
@@ -38,7 +41,10 @@ impl TransactionService for MyTransactionService {
         request: Request<TransactionRequest>,
     ) -> Result<Response<TransactionResponse>, Status> {
 
-        println!("Got a transaction request: {:?}", request);
+        info!(
+            message = "Got a transaction request",
+            request = %request.get_ref().pan
+        );
 
         let my_uuid = Uuid::new_v4();
 
@@ -57,7 +63,15 @@ impl TransactionService for MyTransactionService {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-    tracing_subscriber::fmt::init();
+    //tracing_subscriber::fmt::init();
+
+    let tracer = opentelemetry_jaeger::new_pipeline()
+        .with_service_name("transaction_processor")
+        .install_simple()
+        .expect("Error initializing Jaeger exporter");
+
+    let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+    let subscriber = Registry::default().with(otel_layer).try_init()?;
 
     let redis_addr = env::args()
         .nth(1)
