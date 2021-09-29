@@ -22,8 +22,8 @@ tracing-subscriber = { version = "0.2", features = ["registry", "tracing-log"] }
 tracing-attributes = "0.1"
 tracing-futures = "0.2"
 tracing-opentelemetry = "0.15"
-opentelemetry = { version = "0.16", default-features = false, features = ["trace"] }
-opentelemetry-jaeger = "0.15"
+opentelemetry = { version = "0.16", default-features = false, features = ["trace", "rt-tokio"] }
+opentelemetry-jaeger = { version = "0.15", features = ["rt-tokio"] }
 
 [build-dependencies]
 tonic-build = {version = "0.5", features = ["compression"] }
