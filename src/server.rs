@@ -5,6 +5,7 @@ use helloworld::{TransactionRequest, TransactionResponse};
 use std::env;
 use uuid::Uuid;
 
+// tracing stuff
 use tracing::{debug, info, span, warn, Level};
 use opentelemetry::global;
 use opentelemetry::sdk::{
@@ -29,11 +30,13 @@ pub struct MyTransactionService {
 
 #[tracing::instrument]
 async fn add_pan(last_pan: String, client: &redis::Client) -> RedisResult<()> {
-    let mut con = client.get_async_connection().await?;
+    //let mut con = client.get_async_connection().await?;
+    let mut con = client.get_tokio_connection().await?;
 
     con.set("my_key", last_pan).await?;
+    let val = con.incr("foobar", 1).await?;
 
-    Ok(())
+    Ok(val)
 }
 
 #[tonic::async_trait]
@@ -65,15 +68,15 @@ impl TransactionService for MyTransactionService {
 fn add_tracing() {
     global::set_text_map_propagator(opentelemetry_jaeger::Propagator::new());
 
-    // let tracer = opentelemetry_jaeger::new_pipeline()
-    //     .with_service_name("my_app")
-    //     .install_batch(opentelemetry::runtime::Tokio)
-    //     .expect("Error initializing Jaeger exporter");
-
     let tracer = opentelemetry_jaeger::new_pipeline()
         .with_service_name("my_app")
-        .install_simple()
-        .expect("Could not register tracer");
+        .install_batch(opentelemetry::runtime::Tokio)
+        .expect("Error initializing Jaeger exporter");
+
+    // let tracer = opentelemetry_jaeger::new_pipeline()
+    //     .with_service_name("my_app")
+    //     .install_simple()
+    //     .expect("Could not register tracer");
 
     let otel_layer = tracing_opentelemetry::layer()
         .with_tracer(tracer);
@@ -87,7 +90,7 @@ fn add_tracing() {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
  
-    add_tracing();
+    //add_tracing();
 
     let redis_addr = env::args()
         .nth(1)
